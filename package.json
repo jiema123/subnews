@@ -1,0 +1,30 @@
+{
+  "name": "subnews",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "install:client": "cd client && npm install",
+    "install:server": "cd server && npm install",
+    "install-all": "npm run install:client && npm run install:server",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npx wrangler dev",
+    "dev:client": "cd client && npm run dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jiema123/subnews.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jiema123/subnews/issues"
+  },
+  "homepage": "https://github.com/jiema123/subnews#readme",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -163,8 +163,91 @@ button.secondary {
 }
 
 .modal-content {
-  width: 90%;
-  max-width: 600px;
+  width: 95%;
+  max-width: 1000px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-body {
+  display: flex;
+  gap: 2rem;
+  flex: 1;
+  overflow: hidden;
+}
+
+.modal-config {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.modal-preview {
+  flex: 1;
+  border-left: 1px solid var(--glass-border);
+  padding-left: 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-result {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  overflow-y: auto;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  border: 1px solid var(--glass-border);
+}
+
+.preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.preview-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-body {
+    flex-direction: column;
+  }
+
+  .modal-preview {
+    border-left: none;
+    border-top: 1px solid var(--glass-border);
+    padding-left: 0;
+    padding-top: 2rem;
+    margin-top: 1rem;
+  }
 }
 
 .log-item {
@@ -196,7 +279,8 @@ button.secondary {
   padding: 4px;
 }
 
-.platform-logo svg {
+.platform-logo svg,
+.platform-logo img {
   width: 100%;
   height: 100%;
   object-fit: contain;

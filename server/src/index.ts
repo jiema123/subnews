@@ -108,16 +108,30 @@ app.post('/api/subs/:id/test', auth, async (c) => {
   return c.json(result)
 })
 
+app.post('/api/subs/preview', auth, async (c) => {
+  const data = await c.req.json()
+  const result = await runTask(data, c.env, true)
+  return c.json(result)
+})
+
 // --- Core Logic ---
-async function runTask(sub: Subscription, env: Bindings) {
+async function runTask(sub: any, env: Bindings, isPreview = false) {
   try {
     // 1. Handle dynamic URL (optional AI step)
     let targetUrl = sub.url
-    if (targetUrl.includes('{{date}}')) {
-      const today = new Date().toISOString().split('T')[0]
-      targetUrl = targetUrl.replace('{{date}}', today)
-    }
-    console.log(`[${sub.id}] Target URL: ${targetUrl}`)
+    const now = new Date()
+    const year = now.getFullYear().toString()
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+    const day = now.getDate().toString().padStart(2, '0')
+    const date = now.toISOString().split('T')[0]
+
+    targetUrl = targetUrl
+      .replace(/{{date}}/g, date)
+      .replace(/{{year}}/g, year)
+      .replace(/{{month}}/g, month)
+      .replace(/{{day}}/g, day)
+
+    console.log(`[${sub.id || 'preview'}] Target URL: ${targetUrl}`)
 
     // 2. Fetch via jina
     const jinaUrl = `https://r.jina.ai/${targetUrl}`
@@ -176,19 +190,36 @@ async function runTask(sub: Subscription, env: Bindings) {
     }
 
     const finalContent = aiData.choices[0].message.content
-    console.log(`[${sub.id}] AI Generated Content (${finalContent.length} chars)`)
+    console.log(`[${sub.id || 'preview'}] AI Generated Content (${finalContent.length} chars)`)
 
     // 4. Push to Webhook
-    let pushStatus: 'success' | 'failure' = 'success'
+    let pushStatus: 'success' | 'failure' | 'skipped' = 'success'
     let pushError = ''
-    try {
-      console.log(`[${sub.id}] Sending Webhook to ${sub.platform}...`)
-      await sendWebhook(sub.webhook, sub.platform, finalContent)
-      console.log(`[${sub.id}] Webhook Success`)
-    } catch (e: any) {
-      console.error(`[${sub.id}] Webhook Failed: ${e.message}`)
-      pushStatus = 'failure'
-      pushError = e.message
+    let webhookResponse = ''
+
+    if (sub.webhook) {
+      try {
+        console.log(`[${sub.id || 'preview'}] Sending Webhook to ${sub.platform}...`)
+        const resp = await sendWebhook(sub.webhook, sub.platform, finalContent)
+        webhookResponse = await resp.text()
+        console.log(`[${sub.id || 'preview'}] Webhook Success: ${webhookResponse}`)
+      } catch (e: any) {
+        console.error(`[${sub.id || 'preview'}] Webhook Failed: ${e.message}`)
+        pushStatus = 'failure'
+        pushError = e.message
+      }
+    } else {
+      pushStatus = 'skipped'
+    }
+
+    if (isPreview) {
+      return {
+        status: 'success',
+        content: finalContent,
+        webhookStatus: pushStatus,
+        webhookError: pushError,
+        webhookResponse: webhookResponse
+      }
     }
 
     // 5. Log
@@ -212,12 +243,19 @@ async function runTask(sub: Subscription, env: Bindings) {
 
 async function sendWebhook(url: string, platform: string, content: string) {
   let body: any = {}
-  if (platform === 'dingtalk') {
-    body = { msgtype: 'text', text: { content: content } }
+  if (platform === 'wechat') {
+    body = { msgtype: 'markdown_v2', markdown_v2: { content: content } }
+  } else if (platform === 'dingtalk') {
+    body = { msgtype: 'markdown', markdown: { title: 'SubNews Update', text: content } }
+  } else if (platform === 'feishu') {
+    body = { msg_type: 'interactive', card: { header: { title: { tag: 'plain_text', content: 'SubNews Update' } }, elements: [{ tag: 'markdown', content: content }] } }
   } else {
     // Basic fallback for others
-    body = { text: content }
+    body = { msgtype: 'text', text: { content: content } }
   }
+
+  console.log(`[Webhook Debug] CURL command for ${platform}:`);
+  console.log(`curl '${url}' -X POST -H 'Content-Type: application/json' -d '${JSON.stringify(body)}'`);
 
   const resp = await fetch(url, {
     method: 'POST',
@@ -226,6 +264,7 @@ async function sendWebhook(url: string, platform: string, content: string) {
   })
 
   if (!resp.ok) throw new Error(`Webhook failed: ${resp.statusText}`)
+  return resp
 }
 
 // --- Scheduler ---

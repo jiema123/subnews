@@ -215,39 +215,64 @@ function showTaskModal(sub?: any) {
   modal.innerHTML = `
     <div class="glass-card modal-content">
       <h2 style="margin-bottom: 1.5rem;">${sub ? 'Edit Task' : 'New Subscription Task'}</h2>
-      <div class="form-group">
-        <label>Task Name</label>
-        <input type="text" id="m-name" value="${sub ? sub.name : ''}" placeholder="Daily AI News">
+      
+      <div class="modal-body">
+        <!-- Left: Configuration -->
+        <div class="modal-config">
+          <div class="form-group">
+            <label>Task Name</label>
+            <input type="text" id="m-name" value="${sub ? sub.name : ''}" placeholder="Daily AI News">
+          </div>
+          <div class="form-group">
+            <label>Target URL (Support {{date}}, {{year}}, {{month}}, {{day}})</label>
+            <input type="text" id="m-url" list="url-suggestions" value="${sub ? sub.url : ''}" placeholder="https://example.com/news/{{date}}">
+            <datalist id="url-suggestions">
+              <option value="https://newsnow.busiyi.world">各类国内新闻</option>
+              <option value="https://ai.hubtoday.app/{{year}}-{{month}}/{{year}}-{{month}}-{{day}}/">AI科技新闻</option>
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label>Cron Expression (Schedule)</label>
+            <input type="text" id="m-cron" value="${sub ? sub.cron : '0 9 * * *'}" placeholder="0 9 * * *">
+          </div>
+          <div class="form-group">
+            <label>Platform</label>
+            <select id="m-platform">
+              <option value="dingtalk" ${sub?.platform === 'dingtalk' ? 'selected' : ''}>DingTalk</option>
+              <option value="wechat" ${sub?.platform === 'wechat' ? 'selected' : ''}>WeChat Work</option>
+              <option value="feishu" ${sub?.platform === 'feishu' ? 'selected' : ''}>Feishu</option>
+              <option value="telegram" ${sub?.platform === 'telegram' ? 'selected' : ''}>Telegram</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Webhook URL</label>
+            <input type="text" id="m-webhook" value="${sub ? sub.webhook : ''}" placeholder="https://oapi.dingtalk.com/robot/send?access_token=...">
+          </div>
+          <div class="form-group">
+            <label>Content Template (Prompt for AI)</label>
+            <textarea id="m-template" rows="10" placeholder="Summarize the top 3 items with bullet points...">${sub ? sub.template : 'Summarize the main news into 3 items with clear bullet points. Use Chinese.'}</textarea>
+          </div>
+        </div>
+
+        <!-- Right: Preview -->
+        <div class="modal-preview">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="margin: 0;">Debug Result (AI Prompt Output)</label>
+            <button id="btn-preview-task" class="secondary" style="width: auto; padding: 0.4rem 1rem; font-size: 0.875rem;">Run Debug</button>
+          </div>
+          <div class="preview-result" id="preview-area">
+            <div class="preview-placeholder">
+              <div style="font-size: 2rem; margin-bottom: 1rem;">🔍</div>
+              <div>Fill in the URL and Template, then click "Run Debug" to see the AI result.</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Target URL (Support {{date}} for dynamic URL)</label>
-        <input type="text" id="m-url" value="${sub ? sub.url : ''}" placeholder="https://example.com/news/{{date}}">
-      </div>
-      <div class="form-group">
-        <label>Cron Expression (Schedule)</label>
-        <input type="text" id="m-cron" value="${sub ? sub.cron : '0 9 * * *'}" placeholder="0 9 * * *">
-      </div>
-      <div class="form-group">
-        <label>Platform</label>
-        <select id="m-platform">
-          <option value="dingtalk" ${sub?.platform === 'dingtalk' ? 'selected' : ''}>DingTalk</option>
-          <option value="wechat" ${sub?.platform === 'wechat' ? 'selected' : ''}>WeChat Work</option>
-          <option value="feishu" ${sub?.platform === 'feishu' ? 'selected' : ''}>Feishu</option>
-          <option value="telegram" ${sub?.platform === 'telegram' ? 'selected' : ''}>Telegram</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Webhook URL</label>
-        <input type="text" id="m-webhook" value="${sub ? sub.webhook : ''}" placeholder="https://oapi.dingtalk.com/robot/send?access_token=...">
-      </div>
-      <div class="form-group">
-        <label>Content Template (Prompt for AI)</label>
-        <textarea id="m-template" rows="4" placeholder="Summarize the top 3 items with bullet points...">${sub ? sub.template : 'Summarize the main news into 3 items with clear bullet points. Use Chinese.'}</textarea>
-      </div>
-      <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+
+      <div style="display: flex; gap: 1rem; margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
         <button id="btn-save-task">Save Task</button>
         <button id="btn-close-modal" class="secondary">Cancel</button>
-        ${sub ? `<button id="btn-delete-task" style="background: #ef4444; width: auto;">Delete</button>` : ''}
+        ${sub ? `<button id="btn-delete-task" style="background: #ef4444; width: auto; margin-left: auto;">Delete</button>` : ''}
       </div>
     </div>
   `;
@@ -255,6 +280,52 @@ function showTaskModal(sub?: any) {
   document.body.appendChild(modal);
 
   document.querySelector('#btn-close-modal')?.addEventListener('click', () => modal.remove());
+
+  document.querySelector('#btn-preview-task')?.addEventListener('click', async () => {
+    const area = document.querySelector('#preview-area') as HTMLElement;
+    const btn = document.querySelector('#btn-preview-task') as HTMLButtonElement;
+
+    const data = {
+      url: (document.querySelector('#m-url') as HTMLInputElement).value,
+      template: (document.querySelector('#m-template') as HTMLTextAreaElement).value,
+      webhook: (document.querySelector('#m-webhook') as HTMLInputElement).value,
+      platform: (document.querySelector('#m-platform') as HTMLSelectElement).value,
+    };
+
+    if (!data.url) return alert('Please enter target URL');
+
+    area.innerHTML = `<div class="preview-loading"><div class="spinner"></div><div style="margin-left: 1rem;">Analyzing content...</div></div>`;
+    btn.disabled = true;
+
+    try {
+      const res = await api.subs.preview(data);
+      if (res.status === 'success') {
+        let html = `<div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--glass-border);">${res.content}</div>`;
+
+        if (res.webhookStatus === 'success') {
+          html += `<div style="background: rgba(16, 185, 129, 0.1); padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem;">
+            <div style="color: #10b981; font-weight: 600; margin-bottom: 0.25rem;">✓ Webhook Push Success</div>
+            <code style="color: var(--text-muted);">${res.webhookResponse}</code>
+          </div>`;
+        } else if (res.webhookStatus === 'failure') {
+          html += `<div style="background: rgba(239, 68, 68, 0.1); padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem;">
+            <div style="color: #ef4444; font-weight: 600; margin-bottom: 0.25rem;">✗ Webhook Push Failed</div>
+            <div style="color: var(--text-muted);">${res.webhookError}</div>
+          </div>`;
+        } else {
+          html += `<div style="color: var(--text-muted); font-size: 0.875rem; font-style: italic;">Webhook not configured, push skipped.</div>`;
+        }
+
+        area.innerHTML = html;
+      } else {
+        area.innerHTML = `<div style="color: #ef4444; padding: 1rem;">Error: ${res.error}</div>`;
+      }
+    } catch (e: any) {
+      area.innerHTML = `<div style="color: #ef4444; padding: 1rem;">Error: ${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   document.querySelector('#btn-save-task')?.addEventListener('click', async () => {
     const data = {
@@ -304,23 +375,17 @@ function getPlatformColor(platform: string) {
 }
 
 function getPlatformLogo(platform: string) {
-  const color = getPlatformColor(platform);
   switch (platform) {
     case 'dingtalk':
-      // Wing / Lightning shape
-      return `<svg viewBox="0 0 1024 1024" fill="${color}"><path d="M512 0C229.23 0 0 229.23 0 512s229.23 512 512 512 512-229.23 512-512S794.77 0 512 0zm0 938.67C276.36 938.67 85.33 747.64 85.33 512S276.36 85.33 512 85.33 938.67 276.36 938.67 512 747.64 938.67 512 938.67z"/><path d="M725.33 384H554.67l42.67-170.67-256 298.67h170.67l-42.67 170.67z"/></svg>`;
+      return `<img src="/dingtalk.svg" alt="DingTalk" />`;
     case 'wechat':
-      // Chat Bubbles (Enterprise WeChat usually blue)
-      return `<svg viewBox="0 0 16 16" fill="${color}"><path d="M11.176 14.429c-2.665 0-4.826-1.8-4.826-4.018 0-2.22 2.159-4.02 4.824-4.02S16 8.191 16 10.411c0 1.21-.65 2.301-1.666 3.036a.32.32 0 0 0-.12.366l.218.81a.6.6 0 0 1 .029.117.166.166 0 0 1-.162.162.2.2 0 0 1-.092-.03l-1.057-.61a.5.5 0 0 0-.256-.074.5.5 0 0 0-.142.021 5.7 5.7 0 0 1-1.576.22M9.064 9.542a.647.647 0 1 0 .557-1 .645.645 0 0 0-.646.647.6.6 0 0 0 .09.353Zm3.232.001a.646.646 0 1 0 .546-1 .645.645 0 0 0-.644.644.63.63 0 0 0 .098.356"/><path d="M0 6.826c0 1.455.781 2.765 2.001 3.656a.385.385 0 0 1 .143.439l-.161.6-.1.373a.5.5 0 0 0-.032.14.19.19 0 0 0 .193.193q.06 0 .111-.029l1.268-.733a.6.6 0 0 1 .308-.088q.088 0 .171.025a6.8 6.8 0 0 0 1.625.26 4.5 4.5 0 0 1-.177-1.251c0-2.936 2.785-5.02 5.824-5.02l.15.002C10.587 3.429 8.392 2 5.796 2 2.596 2 0 4.16 0 6.826m4.632-1.555a.77.77 0 1 1-1.54 0 .77.77 0 0 1 1.54 0m3.875 0a.77.77 0 1 1-1.54 0 .77.77 0 0 1 1.54 0"/></svg>`;
+      return `<img src="/weixinwork.svg" alt="WeChat" />`;
     case 'feishu':
-      // Simplified Bird/Triangle
-      return `<svg viewBox="0 0 24 24" fill="${color}"><path d="M21.9 11.2l-9.8-9.8c-.4-.4-1-.4-1.4 0l-9.8 9.8c-.4.4-.4 1 0 1.4l9.8 9.8c.4.4 1 .4 1.4 0l9.8-9.8c.4-.4.4-1 0-1.4zM12 20.6L3.4 12 12 3.4 20.6 12 12 20.6z"/><path d="M12 7l-5 5h10l-5-5z"/></svg>`;
+      return `<img src="/fieshu.svg" alt="Feishu" />`;
     case 'telegram':
-      // Paper Plane
-      return `<svg viewBox="0 0 16 16" fill="${color}"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.287 5.906q-1.168.486-4.666 2.01-.567.225-.595.442c-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294q.39.01.868-.32 3.269-2.206 3.374-2.23c.05-.012.12-.026.166.016s.042.12.037.141c-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8 8 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629q.14.092.27.187c.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.4 1.4 0 0 0-.013-.315.34.34 0 0 0-.114-.217.53.53 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09"/></svg>`;
+      return `<img src="/telegram.svg" alt="Telegram" />`;
     default:
-      // Generic Bell
-      return `<svg viewBox="0 0 24 24" fill="${color}"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>`;
+      return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>`;
   }
 }
 

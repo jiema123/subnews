@@ -38,7 +38,8 @@ export const api = {
         create: (d: any) => api.request('/subs', { method: 'POST', body: JSON.stringify(d) }),
         update: (id: string, d: any) => api.request(`/subs/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
         delete: (id: string) => api.request(`/subs/${id}`, { method: 'DELETE' }),
-        test: (id: string) => api.request(`/subs/${id}/test`, { method: 'POST' })
+        test: (id: string) => api.request(`/subs/${id}/test`, { method: 'POST' }),
+        preview: (d: any) => api.request('/subs/preview', { method: 'POST', body: JSON.stringify(d) })
     },
 
     logs: {

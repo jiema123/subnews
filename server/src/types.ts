@@ -23,7 +23,7 @@ export interface PushLog {
   taskId: string;
   taskName: string;
   content: string;
-  status: 'success' | 'failure';
+  status: 'success' | 'failure' | 'skipped';
   error?: string;
   timestamp: number;
 }

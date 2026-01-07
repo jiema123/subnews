@@ -20,22 +20,25 @@ function renderLogin() {
   app.innerHTML = `
     <div class="auth-container glass-card">
       <h1 class="title">SubNews</h1>
+    <form id="login-form">
       <div id="auth-form">
         <div class="form-group">
-          <label>Email</label>
+          <label>邮箱</label>
           <input type="email" id="email" placeholder="your@email.com">
         </div>
         <div class="form-group">
-          <label>Password</label>
+          <label>密码</label>
           <input type="password" id="password" placeholder="••••••••">
         </div>
-        <button id="btn-login">Login</button>
-        <button id="btn-show-reg" class="secondary" style="margin-top: 1rem;">Create Account</button>
+        <button type="submit" id="btn-login">登录</button>
+        <button type="button" id="btn-show-reg" class="secondary" style="margin-top: 1rem;">创建账号</button>
       </div>
-    </div>
+    </form>
+  </div>
   `;
 
-  document.querySelector('#btn-login')?.addEventListener('click', async () => {
+  document.querySelector('#login-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
     const email = (document.querySelector('#email') as HTMLInputElement).value;
     const password = (document.querySelector('#password') as HTMLInputElement).value;
     try {
@@ -54,24 +57,27 @@ function renderLogin() {
 function renderRegister() {
   const form = document.querySelector('#auth-form')!;
   form.innerHTML = `
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="email" placeholder="your@email.com">
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="password" placeholder="••••••••">
-    </div>
-    <button id="btn-register">Register</button>
-    <button id="btn-show-login" class="secondary" style="margin-top: 1rem;">Back to Login</button>
+    <form id="register-form">
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="email" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="password" placeholder="••••••••">
+      </div>
+      <button type="submit" id="btn-register">注册</button>
+      <button type="button" id="btn-show-login" class="secondary" style="margin-top: 1rem;">返回登录</button>
+    </form>
   `;
 
-  document.querySelector('#btn-register')?.addEventListener('click', async () => {
+  document.querySelector('#register-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
     const email = (document.querySelector('#email') as HTMLInputElement).value;
     const password = (document.querySelector('#password') as HTMLInputElement).value;
     try {
       await api.auth.register({ email, password });
-      alert('Success! Please login.');
+      alert('注册成功！请登录。');
       currentView = 'login';
       render();
     } catch (e: any) { alert(e.message); }
@@ -88,18 +94,18 @@ async function renderDashboard() {
     <div class="nav">
       <h1 class="title" style="margin: 0;">SubNews</h1>
       <div>
-        <button id="btn-show-logs" class="secondary" style="width: auto; margin-right: 1rem;">Logs</button>
-        <button id="btn-logout" class="secondary" style="width: auto;">Logout</button>
+        <button id="btn-show-logs" class="secondary" style="width: auto; margin-right: 1rem;">日志</button>
+        <button id="btn-logout" class="secondary" style="width: auto;">退出</button>
       </div>
     </div>
     
     <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-      <h2>Your Subscriptions</h2>
-      <button id="btn-add-task" style="width: auto;">+ New Task</button>
+      <h2>我的订阅</h2>
+      <button id="btn-add-task" style="width: auto;">+ 新建任务</button>
     </div>
 
     <div class="task-grid" id="task-list">
-      <div style="color: var(--text-muted)">Loading...</div>
+      <div style="color: var(--text-muted)">加载中...</div>
     </div>
   `;
 
@@ -120,7 +126,7 @@ async function renderDashboard() {
     subscriptions = await api.subs.list();
     const list = document.querySelector('#task-list')!;
     if (subscriptions.length === 0) {
-      list.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 4rem; color: var(--text-muted)">No subscriptions yet. Create your first one!</div>`;
+      list.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 4rem; color: var(--text-muted)">暂无订阅任务，快创建一个吧！</div>`;
     } else {
       list.innerHTML = subscriptions.map(sub => `
         <div class="glass-card task-card">
@@ -137,8 +143,8 @@ async function renderDashboard() {
             ${sub.url}
           </div>
           <div style="display: flex; gap: 0.5rem;">
-            <button class="secondary btn-edit" data-id="${sub.id}">Edit</button>
-            <button class="secondary btn-test" data-id="${sub.id}">Test Now</button>
+            <button class="secondary btn-edit" data-id="${sub.id}">编辑</button>
+            <button class="secondary btn-test" data-id="${sub.id}">立即测试</button>
           </div>
         </div>
       `).join('');
@@ -155,13 +161,13 @@ async function renderDashboard() {
         b.addEventListener('click', async (e) => {
           const id = (e.target as HTMLElement).dataset.id!;
           const btn = (e.target as HTMLButtonElement);
-          btn.innerText = 'Testing...';
+          btn.innerText = '测试中...';
           btn.disabled = true;
           try {
             const res = await api.subs.test(id);
-            alert(res.status === 'success' ? 'Push Success!' : 'Push Failed: ' + res.error);
+            alert(res.status === 'success' ? '推送成功！' : '推送失败: ' + res.error);
           } catch (e: any) { alert(e.message); }
-          btn.innerText = 'Test Now';
+          btn.innerText = '立即测试';
           btn.disabled = false;
         });
       });
@@ -172,11 +178,11 @@ async function renderDashboard() {
 async function renderLogs() {
   app.innerHTML = `
     <div class="nav">
-      <h1 class="title" style="margin: 0;">Push Logs</h1>
-      <button id="btn-back-dash" class="secondary" style="width: auto;">Back to Dashboard</button>
+      <h1 class="title" style="margin: 0;">推送日志</h1>
+      <button id="btn-back-dash" class="secondary" style="width: auto;">返回仪表盘</button>
     </div>
     <div class="glass-card">
-      <div id="log-list">Loading...</div>
+      <div id="log-list">加载中...</div>
     </div>
   `;
 
@@ -189,7 +195,7 @@ async function renderLogs() {
     logs = await api.logs.list();
     const list = document.querySelector('#log-list')!;
     if (logs.length === 0) {
-      list.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--text-muted)">No logs found.</div>`;
+      list.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--text-muted)">暂无日志记录。</div>`;
     } else {
       list.innerHTML = logs.map(log => `
         <div class="log-item">
@@ -214,17 +220,17 @@ function showTaskModal(sub?: any) {
   modal.className = 'modal-overlay';
   modal.innerHTML = `
     <div class="glass-card modal-content">
-      <h2 style="margin-bottom: 1.5rem;">${sub ? 'Edit Task' : 'New Subscription Task'}</h2>
+      <h2 style="margin-bottom: 1.5rem;">${sub ? '编辑任务' : '新建订阅任务'}</h2>
       
       <div class="modal-body">
         <!-- Left: Configuration -->
         <div class="modal-config">
           <div class="form-group">
-            <label>Task Name</label>
-            <input type="text" id="m-name" value="${sub ? sub.name : ''}" placeholder="Daily AI News">
+            <label>任务名称</label>
+            <input type="text" id="m-name" value="${sub ? sub.name : ''}" placeholder="例如：每日 AI 新闻">
           </div>
           <div class="form-group">
-            <label>Target URL (Support {{date}}, {{year}}, {{month}}, {{day}})</label>
+            <label>目标 URL (支持变量 {{date}}, {{year}}, {{month}}, {{day}})</label>
             <input type="text" id="m-url" list="url-suggestions" value="${sub ? sub.url : ''}" placeholder="https://example.com/news/{{date}}">
             <datalist id="url-suggestions">
               <option value="https://newsnow.busiyi.world">各类国内新闻</option>
@@ -232,15 +238,15 @@ function showTaskModal(sub?: any) {
             </datalist>
           </div>
           <div class="form-group">
-            <label>Cron Expression (Schedule)</label>
-            <input type="text" id="m-cron" value="${sub ? sub.cron : '0 9 * * *'}" placeholder="0 9 * * *">
+            <label>Cron 表达式 (调度周期)</label>
+            <input type="text" id="m-cron" value="${sub ? sub.cron : '0 9 * * *'}" placeholder="例如：0 9 * * * (每天上午9点)">
           </div>
           <div class="form-group">
-            <label>Platform</label>
+            <label>推送平台</label>
             <select id="m-platform">
-              <option value="dingtalk" ${sub?.platform === 'dingtalk' ? 'selected' : ''}>DingTalk</option>
-              <option value="wechat" ${sub?.platform === 'wechat' ? 'selected' : ''}>WeChat Work</option>
-              <option value="feishu" ${sub?.platform === 'feishu' ? 'selected' : ''}>Feishu</option>
+              <option value="dingtalk" ${sub?.platform === 'dingtalk' ? 'selected' : ''}>钉钉 (DingTalk)</option>
+              <option value="wechat" ${sub?.platform === 'wechat' ? 'selected' : ''}>企业微信 (WeChat Work)</option>
+              <option value="feishu" ${sub?.platform === 'feishu' ? 'selected' : ''}>飞书 (Feishu)</option>
               <option value="telegram" ${sub?.platform === 'telegram' ? 'selected' : ''}>Telegram</option>
             </select>
           </div>
@@ -249,30 +255,30 @@ function showTaskModal(sub?: any) {
             <input type="text" id="m-webhook" value="${sub ? sub.webhook : ''}" placeholder="https://oapi.dingtalk.com/robot/send?access_token=...">
           </div>
           <div class="form-group">
-            <label>Content Template (Prompt for AI)</label>
-            <textarea id="m-template" rows="10" placeholder="Summarize the top 3 items with bullet points...">${sub ? sub.template : 'Summarize the main news into 3 items with clear bullet points. Use Chinese.'}</textarea>
+            <label>内容模板 (AI 提示词)</label>
+            <textarea id="m-template" rows="10" placeholder="例如：总结前3条重要新闻...">${sub ? sub.template : '请总结最重要的3条新闻，列出要点。'}</textarea>
           </div>
         </div>
 
         <!-- Right: Preview -->
         <div class="modal-preview">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label style="margin: 0;">Debug Result (AI Prompt Output)</label>
-            <button id="btn-preview-task" class="secondary" style="width: auto; padding: 0.4rem 1rem; font-size: 0.875rem;">Run Debug</button>
+            <label style="margin: 0;">调试结果 (AI 输出预览)</label>
+            <button id="btn-preview-task" class="secondary" style="width: auto; padding: 0.4rem 1rem; font-size: 0.875rem;">运行调试</button>
           </div>
           <div class="preview-result" id="preview-area">
             <div class="preview-placeholder">
               <div style="font-size: 2rem; margin-bottom: 1rem;">🔍</div>
-              <div>Fill in the URL and Template, then click "Run Debug" to see the AI result.</div>
+              <div>填写 URL 和模板后，点击“运行调试”查看 AI 处理结果。</div>
             </div>
           </div>
         </div>
       </div>
 
       <div style="display: flex; gap: 1rem; margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
-        <button id="btn-save-task">Save Task</button>
-        <button id="btn-close-modal" class="secondary">Cancel</button>
-        ${sub ? `<button id="btn-delete-task" style="background: #ef4444; width: auto; margin-left: auto;">Delete</button>` : ''}
+        <button id="btn-save-task">保存任务</button>
+        <button id="btn-close-modal" class="secondary">取消</button>
+        ${sub ? `<button id="btn-delete-task" style="background: #ef4444; width: auto; margin-left: auto;">删除</button>` : ''}
       </div>
     </div>
   `;
@@ -292,9 +298,9 @@ function showTaskModal(sub?: any) {
       platform: (document.querySelector('#m-platform') as HTMLSelectElement).value,
     };
 
-    if (!data.url) return alert('Please enter target URL');
+    if (!data.url) return alert('请输入目标 URL');
 
-    area.innerHTML = `<div class="preview-loading"><div class="spinner"></div><div style="margin-left: 1rem;">Analyzing content...</div></div>`;
+    area.innerHTML = `<div class="preview-loading"><div class="spinner"></div><div style="margin-left: 1rem;">正在分析内容...</div></div>`;
     btn.disabled = true;
 
     try {
@@ -304,24 +310,24 @@ function showTaskModal(sub?: any) {
 
         if (res.webhookStatus === 'success') {
           html += `<div style="background: rgba(16, 185, 129, 0.1); padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem;">
-            <div style="color: #10b981; font-weight: 600; margin-bottom: 0.25rem;">✓ Webhook Push Success</div>
+            <div style="color: #10b981; font-weight: 600; margin-bottom: 0.25rem;">✓ Webhook 推送成功</div>
             <code style="color: var(--text-muted);">${res.webhookResponse}</code>
           </div>`;
         } else if (res.webhookStatus === 'failure') {
           html += `<div style="background: rgba(239, 68, 68, 0.1); padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem;">
-            <div style="color: #ef4444; font-weight: 600; margin-bottom: 0.25rem;">✗ Webhook Push Failed</div>
+            <div style="color: #ef4444; font-weight: 600; margin-bottom: 0.25rem;">✗ Webhook 推送失败</div>
             <div style="color: var(--text-muted);">${res.webhookError}</div>
           </div>`;
         } else {
-          html += `<div style="color: var(--text-muted); font-size: 0.875rem; font-style: italic;">Webhook not configured, push skipped.</div>`;
+          html += `<div style="color: var(--text-muted); font-size: 0.875rem; font-style: italic;">未配置 Webhook，跳过推送。</div>`;
         }
 
         area.innerHTML = html;
       } else {
-        area.innerHTML = `<div style="color: #ef4444; padding: 1rem;">Error: ${res.error}</div>`;
+        area.innerHTML = `<div style="color: #ef4444; padding: 1rem;">错误: ${res.error}</div>`;
       }
     } catch (e: any) {
-      area.innerHTML = `<div style="color: #ef4444; padding: 1rem;">Error: ${e.message}</div>`;
+      area.innerHTML = `<div style="color: #ef4444; padding: 1rem;">错误: ${e.message}</div>`;
     } finally {
       btn.disabled = false;
     }
@@ -351,7 +357,7 @@ function showTaskModal(sub?: any) {
 
   if (sub) {
     document.querySelector('#btn-delete-task')?.addEventListener('click', async () => {
-      if (!confirm('Delete this task?')) return;
+      if (!confirm('确定要删除这个任务吗？')) return;
       try {
         await api.subs.delete(sub.id);
         modal.remove();

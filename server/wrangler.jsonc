@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "server",
+  "name": "subnews",
   "main": "src/index.ts",
   "compatibility_date": "2026-01-06",
   "compatibility_flags": [
@@ -9,12 +9,16 @@
   "kv_namespaces": [
     {
       "binding": "SUBNEWS_KV",
-      "id": "SUBNEWS_KV_ID"
+      "id": "47edeb9d400e415ebea0b30a38e00754"
     }
   ],
   "triggers": {
     "crons": [
-      "*/30 * * * *"
+      "* * * * *"
     ]
+  },
+  "assets": {
+    "directory": "../client/dist",
+    "binding": "ASSETS"
   }
 }

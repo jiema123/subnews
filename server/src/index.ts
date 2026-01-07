@@ -1,10 +1,12 @@
 import { Hono, Context, Next } from 'hono'
 import { cors } from 'hono/cors'
 import { User, Subscription, PushLog } from './types'
+import cronParser from 'cron-parser'
 
 type Bindings = {
   SUBNEWS_KV: KVNamespace
   GEMINI_API_KEY: string
+  JINA_API_KEY: string
 }
 
 type Variables = {
@@ -136,7 +138,11 @@ async function runTask(sub: any, env: Bindings, isPreview = false) {
     // 2. Fetch via jina
     const jinaUrl = `https://r.jina.ai/${targetUrl}`
     console.log(`[${sub.id}] Fetching Jina: ${jinaUrl}`)
-    const contentResp = await fetch(jinaUrl)
+    const contentResp = await fetch(jinaUrl, {
+      headers: {
+        'Authorization': `Bearer ${env.JINA_API_KEY}`
+      }
+    })
     console.log(`[${sub.id}] Jina Status: ${contentResp.status}`)
     const markdown = await contentResp.text()
     console.log(`[${sub.id}] Jina Content Length: ${markdown.length}`)
@@ -267,24 +273,47 @@ async function sendWebhook(url: string, platform: string, content: string) {
   return resp
 }
 
+
 // --- Scheduler ---
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Bindings, ctx: ExecutionContext) {
-    // This is simplified. Normally you'd check crontabs here.
-    // For CF Workers, we rely on the `scheduled` trigger which can be configured in wrangler.toml
-    // We will list all subs and run those that are due.
+    console.log('[Scheduler] Triggered at', new Date().toISOString());
     const { keys } = await env.SUBNEWS_KV.list({ prefix: 'sub:' })
+
+    const now = new Date(); // Current execution time
+
     for (const key of keys) {
       const subJson = await env.SUBNEWS_KV.get(key.name)
       if (subJson) {
         const sub: Subscription = JSON.parse(subJson)
-        if (sub.isActive) {
-          // Here you would check crontab logic. For this demo, we just run all active ones.
-          // In production, use a library like `cron-parser`
-          ctx.waitUntil(runTask(sub, env))
+        if (sub.isActive && sub.cron) {
+          try {
+            // Parse the cron expression
+            const interval = (cronParser as any).parseExpression(sub.cron);
+
+            // Get the LAST scheduled time relative to now
+            const prev = interval.prev();
+            const prevTime = prev.getTime();
+            const nowTime = now.getTime();
+
+            // Check if the scheduled time is within the last 65 seconds
+            // (Assuming the worker runs every 60 seconds)
+            // If the task was supposed to run 1 second ago, diff is 1000ms.
+            const diff = nowTime - prevTime;
+
+            if (diff >= 0 && diff < 65000) {
+              console.log(`[Scheduler] Running task ${sub.name} (${sub.id}). Scheduled: ${prev.toISOString()}, Now: ${now.toISOString()}`);
+              ctx.waitUntil(runTask(sub, env));
+            } else {
+              console.log(`[Scheduler] Skipping task ${sub.name}. Last run time ${prev.toISOString()} was too long ago (${diff}ms).`);
+            }
+          } catch (e) {
+            console.error(`[Scheduler] Error parsing cron for ${sub.name}: ${(e as Error).message}`);
+          }
         }
       }
     }
   }
 }
+

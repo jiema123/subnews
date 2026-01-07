@@ -164,7 +164,7 @@ button.secondary {
 
 .modal-content {
   width: 95%;
-  max-width: 1000px;
+  max-width: 1400px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;

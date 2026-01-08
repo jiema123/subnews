@@ -201,7 +201,43 @@ button.secondary {
   font-size: 0.9375rem;
   line-height: 1.6;
   white-space: pre-wrap;
-  border: 1px solid var(--glass-border);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.modal-config::-webkit-scrollbar,
+.preview-result::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.modal-config,
+.preview-result {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+  border-top: 1px solid var(--glass-border);
+  padding-top: 1.5rem;
+}
+
+.modal-footer-right {
+  display: flex;
+  gap: 1rem;
+}
+
+.modal-footer button {
+  width: auto;
+  min-width: 100px;
+  white-space: nowrap;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 .preview-placeholder {

@@ -290,7 +290,7 @@ export default {
         if (sub.isActive && sub.cron) {
           try {
             // Parse the cron expression
-            const interval = (cronParser as any).parseExpression(sub.cron);
+            const interval = (cronParser as any).parseExpression(sub.cron, { tz: 'Asia/Shanghai' });
 
             // Get the LAST scheduled time relative to now
             const prev = interval.prev();

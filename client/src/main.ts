@@ -55,20 +55,24 @@ function renderLogin() {
 }
 
 function renderRegister() {
-  const form = document.querySelector('#auth-form')!;
-  form.innerHTML = `
-    <form id="register-form">
-      <div class="form-group">
-        <label>邮箱</label>
-        <input type="email" id="email" placeholder="your@email.com">
-      </div>
-      <div class="form-group">
-        <label>密码</label>
-        <input type="password" id="password" placeholder="••••••••">
-      </div>
-      <button type="submit" id="btn-register">注册</button>
-      <button type="button" id="btn-show-login" class="secondary" style="margin-top: 1rem;">返回登录</button>
-    </form>
+  app.innerHTML = `
+    <div class="auth-container glass-card">
+      <h1 class="title">SubNews</h1>
+      <form id="register-form">
+        <div id="auth-form">
+          <div class="form-group">
+            <label>邮箱</label>
+            <input type="email" id="email" placeholder="your@email.com">
+          </div>
+          <div class="form-group">
+            <label>密码</label>
+            <input type="password" id="password" placeholder="••••••••">
+          </div>
+          <button type="submit" id="btn-register">注册</button>
+          <button type="button" id="btn-show-login" class="secondary" style="margin-top: 1rem;">返回登录</button>
+        </div>
+      </form>
+    </div>
   `;
 
   document.querySelector('#register-form')?.addEventListener('submit', async (e) => {
@@ -94,6 +98,7 @@ async function renderDashboard() {
     <div class="nav">
       <h1 class="title" style="margin: 0;">SubNews</h1>
       <div>
+        <button id="btn-manual" class="secondary" style="width: auto; margin-right: 1rem;">手册</button>
         <button id="btn-show-logs" class="secondary" style="width: auto; margin-right: 1rem;">日志</button>
         <button id="btn-logout" class="secondary" style="width: auto;">退出</button>
       </div>
@@ -108,6 +113,10 @@ async function renderDashboard() {
       <div style="color: var(--text-muted)">加载中...</div>
     </div>
   `;
+
+  document.querySelector('#btn-manual')?.addEventListener('click', () => {
+    window.open('https://siazucxty8.feishu.cn/docx/QcvOd8tWgol906xhO83c6Nlsn51', '_blank');
+  });
 
   document.querySelector('#btn-logout')?.addEventListener('click', () => {
     api.logout();
@@ -238,8 +247,20 @@ function showTaskModal(sub?: any) {
             </datalist>
           </div>
           <div class="form-group">
-            <label>Cron 表达式 (调度周期)</label>
-            <input type="text" id="m-cron" value="${sub ? sub.cron : '0 9 * * *'}" placeholder="例如：0 9 * * * (每天上午9点)">
+            <label>调度周期</label>
+            <select id="m-cron-preset">
+              <option value="0 9 * * *">每天上午 9 点</option>
+              <option value="0 12 * * *">每天中午 12 点</option>
+              <option value="0 18 * * *">每天下午 6 点</option>
+              <option value="0 * * * *">每小时</option>
+              <option value="*/30 * * * *">每 30 分钟</option>
+              <option value="0 9 * * 1">每周一上午 9 点</option>
+              <option value="custom">自定义 Cron 表达式</option>
+            </select>
+            <div id="m-cron-custom-container" style="margin-top: 0.5rem; display: none;">
+              <input type="text" id="m-cron" value="${sub ? sub.cron : '0 9 * * *'}" placeholder="例如：0 9 * * *">
+              <small style="color: var(--text-muted); font-size: 0.75rem;">标准 Cron 格式: 分 时 日 月 周</small>
+            </div>
           </div>
           <div class="form-group">
             <label>推送平台</label>
@@ -275,10 +296,14 @@ function showTaskModal(sub?: any) {
         </div>
       </div>
 
-      <div style="display: flex; gap: 1rem; margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
-        <button id="btn-save-task">保存任务</button>
-        <button id="btn-close-modal" class="secondary">取消</button>
-        ${sub ? `<button id="btn-delete-task" style="background: #ef4444; width: auto; margin-left: auto;">删除</button>` : ''}
+      <div class="modal-footer">
+        <div>
+          ${sub ? `<button id="btn-delete-task" style="background: transparent; border: 1px solid #ef4444; color: #ef4444; width: auto;">删除任务</button>` : ''}
+        </div>
+        <div class="modal-footer-right">
+          <button id="btn-close-modal" class="secondary">取消</button>
+          <button id="btn-save-task">保存任务</button>
+        </div>
       </div>
     </div>
   `;
@@ -330,6 +355,29 @@ function showTaskModal(sub?: any) {
       area.innerHTML = `<div style="color: #ef4444; padding: 1rem;">错误: ${e.message}</div>`;
     } finally {
       btn.disabled = false;
+    }
+  });
+
+  const cronPreset = document.querySelector('#m-cron-preset') as HTMLSelectElement;
+  const cronInput = document.querySelector('#m-cron') as HTMLInputElement;
+  const cronCustom = document.querySelector('#m-cron-custom-container') as HTMLElement;
+
+  if (sub && sub.cron) {
+    const isPreset = Array.from(cronPreset.options).some(o => o.value === sub.cron);
+    if (isPreset) {
+      cronPreset.value = sub.cron;
+    } else {
+      cronPreset.value = 'custom';
+      cronCustom.style.display = 'block';
+    }
+  }
+
+  cronPreset.addEventListener('change', () => {
+    if (cronPreset.value === 'custom') {
+      cronCustom.style.display = 'block';
+    } else {
+      cronCustom.style.display = 'none';
+      cronInput.value = cronPreset.value;
     }
   });
 

@@ -97,7 +97,7 @@ async function renderDashboard() {
   app.innerHTML = `
     <div class="nav">
       <h1 class="title" style="margin: 0;">SubNews</h1>
-      <div>
+      <div class="nav-actions">
         <button id="btn-manual" class="secondary" style="width: auto; margin-right: 1rem;">手册</button>
         <button id="btn-show-logs" class="secondary" style="width: auto; margin-right: 1rem;">日志</button>
         <button id="btn-logout" class="secondary" style="width: auto;">退出</button>
@@ -115,7 +115,7 @@ async function renderDashboard() {
   `;
 
   document.querySelector('#btn-manual')?.addEventListener('click', () => {
-    window.open('https://siazucxty8.feishu.cn/docx/QcvOd8tWgol906xhO83c6Nlsn51', '_blank');
+    window.open('https://siazucxty8.feishu.cn/docx/IVWTd5FiaoxVEAxfMy2cRdXnnEc', '_blank');
   });
 
   document.querySelector('#btn-logout')?.addEventListener('click', () => {
@@ -174,8 +174,12 @@ async function renderDashboard() {
           btn.disabled = true;
           try {
             const res = await api.subs.test(id);
+            // console.log('Test result:', res);
             alert(res.status === 'success' ? '推送成功！' : '推送失败: ' + res.error);
-          } catch (e: any) { alert(e.message); }
+          } catch (e: any) {
+            console.error(e);
+            alert('测试失败: ' + e.message);
+          }
           btn.innerText = '立即测试';
           btn.disabled = false;
         });
@@ -247,20 +251,18 @@ function showTaskModal(sub?: any) {
             </datalist>
           </div>
           <div class="form-group">
-            <label>调度周期</label>
-            <select id="m-cron-preset">
-              <option value="0 9 * * *">每天上午 9 点</option>
-              <option value="0 12 * * *">每天中午 12 点</option>
-              <option value="0 18 * * *">每天下午 6 点</option>
-              <option value="0 * * * *">每小时</option>
-              <option value="*/30 * * * *">每 30 分钟</option>
-              <option value="0 9 * * 1">每周一上午 9 点</option>
-              <option value="custom">自定义 Cron 表达式</option>
+            <label>调度类型</label>
+            <select id="m-schedule-type">
+              <option value="daily" ${(!sub || sub.scheduleType === 'daily') ? 'selected' : ''}>每天 (Daily)</option>
+              <option value="once" ${sub && sub.scheduleType === 'once' ? 'selected' : ''}>单次 (One-time)</option>
             </select>
-            <div id="m-cron-custom-container" style="margin-top: 0.5rem; display: none;">
-              <input type="text" id="m-cron" value="${sub ? sub.cron : '0 9 * * *'}" placeholder="例如：0 9 * * *">
-              <small style="color: var(--text-muted); font-size: 0.75rem;">标准 Cron 格式: 分 时 日 月 周</small>
-            </div>
+          </div>
+          <div class="form-group">
+            <label>调度时间</label>
+            <!-- Daily: Time Picker, Once: Datetime Picker -->
+            <input type="time" id="m-schedule-time-daily" value="${(sub && sub.scheduleType === 'daily') ? sub.scheduleTime : '09:00'}" style="display: ${(sub && sub.scheduleType === 'once') ? 'none' : 'block'};">
+            <input type="datetime-local" id="m-schedule-time-once" value="${(sub && sub.scheduleType === 'once') ? sub.scheduleTime : ''}" style="display: ${(sub && sub.scheduleType === 'once') ? 'block' : 'none'};">
+            <small style="color: var(--text-muted); font-size: 0.75rem;">注意：时间为北京时间 (UTC+8)</small>
           </div>
           <div class="form-group">
             <label>推送平台</label>
@@ -358,34 +360,34 @@ function showTaskModal(sub?: any) {
     }
   });
 
-  const cronPreset = document.querySelector('#m-cron-preset') as HTMLSelectElement;
-  const cronInput = document.querySelector('#m-cron') as HTMLInputElement;
-  const cronCustom = document.querySelector('#m-cron-custom-container') as HTMLElement;
 
-  if (sub && sub.cron) {
-    const isPreset = Array.from(cronPreset.options).some(o => o.value === sub.cron);
-    if (isPreset) {
-      cronPreset.value = sub.cron;
-    } else {
-      cronPreset.value = 'custom';
-      cronCustom.style.display = 'block';
-    }
-  }
+  const typeSelect = document.querySelector('#m-schedule-type') as HTMLSelectElement;
+  const dailyInput = document.querySelector('#m-schedule-time-daily') as HTMLInputElement;
+  const onceInput = document.querySelector('#m-schedule-time-once') as HTMLInputElement;
 
-  cronPreset.addEventListener('change', () => {
-    if (cronPreset.value === 'custom') {
-      cronCustom.style.display = 'block';
+  typeSelect.addEventListener('change', () => {
+    if (typeSelect.value === 'daily') {
+      dailyInput.style.display = 'block';
+      onceInput.style.display = 'none';
+      dailyInput.focus();
     } else {
-      cronCustom.style.display = 'none';
-      cronInput.value = cronPreset.value;
+      dailyInput.style.display = 'none';
+      onceInput.style.display = 'block';
+      onceInput.focus();
     }
   });
 
   document.querySelector('#btn-save-task')?.addEventListener('click', async () => {
+    const sType = typeSelect.value;
+    const sTime = sType === 'daily' ? dailyInput.value : onceInput.value;
+
+    if (!sTime) return alert('请选择调度时间');
+
     const data = {
       name: (document.querySelector('#m-name') as HTMLInputElement).value,
       url: (document.querySelector('#m-url') as HTMLInputElement).value,
-      cron: (document.querySelector('#m-cron') as HTMLInputElement).value,
+      scheduleType: sType,
+      scheduleTime: sTime,
       platform: (document.querySelector('#m-platform') as HTMLSelectElement).value,
       webhook: (document.querySelector('#m-webhook') as HTMLInputElement).value,
       template: (document.querySelector('#m-template') as HTMLTextAreaElement).value,
@@ -394,13 +396,19 @@ function showTaskModal(sub?: any) {
 
     try {
       if (sub) {
+        console.log('Updating task:', sub.id, data);
         await api.subs.update(sub.id, data);
       } else {
+        console.log('Creating new task:', data);
         await api.subs.create(data);
       }
+      console.log('Task saved successfully');
       modal.remove();
       renderDashboard();
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) {
+      console.error('Save error:', e);
+      alert(e.message);
+    }
   });
 
   if (sub) {

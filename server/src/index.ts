@@ -1,7 +1,6 @@
 import { Hono, Context, Next } from 'hono'
 import { cors } from 'hono/cors'
 import { User, Subscription, PushLog } from './types'
-import cronParser from 'cron-parser'
 
 type Bindings = {
   SUBNEWS_KV: KVNamespace
@@ -287,29 +286,65 @@ export default {
       const subJson = await env.SUBNEWS_KV.get(key.name)
       if (subJson) {
         const sub: Subscription = JSON.parse(subJson)
-        if (sub.isActive && sub.cron) {
+        if (sub.isActive) {
           try {
-            // Parse the cron expression
-            const interval = (cronParser as any).parseExpression(sub.cron, { tz: 'Asia/Shanghai' });
+            // Convert to Shanghai Time
+            const date = new Date();
+            const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+            const shDate = new Date(utc + (3600000 * 8));
 
-            // Get the LAST scheduled time relative to now
-            const prev = interval.prev();
-            const prevTime = prev.getTime();
-            const nowTime = now.getTime();
+            const currentYear = shDate.getFullYear();
+            const currentMonth = String(shDate.getMonth() + 1).padStart(2, '0');
+            const currentDay = String(shDate.getDate()).padStart(2, '0');
+            const currentHour = String(shDate.getHours()).padStart(2, '0');
+            const currentMinute = String(shDate.getMinutes()).padStart(2, '0');
 
-            // Check if the scheduled time is within the last 65 seconds
-            // (Assuming the worker runs every 60 seconds)
-            // If the task was supposed to run 1 second ago, diff is 1000ms.
-            const diff = nowTime - prevTime;
+            // Format: HH:mm
+            const currentTimeStr = `${currentHour}:${currentMinute}`;
+            // Format: YYYY-MM-DDTHH:mm
+            const currentFullStr = `${currentYear}-${currentMonth}-${currentDay}T${currentHour}:${currentMinute}`;
 
-            if (diff >= 0 && diff < 65000) {
-              console.log(`[Scheduler] Running task ${sub.name} (${sub.id}). Scheduled: ${prev.toISOString()}, Now: ${now.toISOString()}`);
-              ctx.waitUntil(runTask(sub, env));
-            } else {
-              console.log(`[Scheduler] Skipping task ${sub.name}. Last run time ${prev.toISOString()} was too long ago (${diff}ms).`);
+            console.log(`[Scheduler] Checking ${sub.name}: Type=${sub.scheduleType}, Time=${sub.scheduleTime}, Current=${currentFullStr}`);
+
+            let shouldRun = false;
+
+            if (sub.scheduleType === 'daily') {
+              if (sub.scheduleTime === currentTimeStr) {
+                // Check if already run today to handle potential overlaps or restarts
+                const lastRunDate = sub.lastRun ? new Date(sub.lastRun) : null;
+                const lastRunDateStr = lastRunDate ?
+                  `${lastRunDate.getFullYear()}-${String(lastRunDate.getMonth() + 1).padStart(2, '0')}-${String(lastRunDate.getDate()).padStart(2, '0')}`
+                  : '';
+                const todayStr = `${currentYear}-${currentMonth}-${currentDay}`;
+
+                if (lastRunDateStr !== todayStr) {
+                  shouldRun = true;
+                } else {
+                  console.log(`[Scheduler] Skip ${sub.name}: Already run today.`);
+                }
+              }
+            } else if (sub.scheduleType === 'once') {
+              // Exact match for "YYYY-MM-DDTHH:mm"
+              if (sub.scheduleTime === currentFullStr) {
+                if (!sub.lastRun) {
+                  shouldRun = true;
+                } else {
+                  console.log(`[Scheduler] Skip ${sub.name}: Already run once.`);
+                }
+              }
             }
+
+            if (shouldRun) {
+              console.log(`[Scheduler] Running task ${sub.name}`);
+              // Update lastRun first to prevent double execution if possible (though KV is eventually consistent)
+              sub.lastRun = Date.now();
+              await env.SUBNEWS_KV.put(`sub:${sub.userId}:${sub.id}`, JSON.stringify(sub));
+
+              ctx.waitUntil(runTask(sub, env));
+            }
+
           } catch (e) {
-            console.error(`[Scheduler] Error parsing cron for ${sub.name}: ${(e as Error).message}`);
+            console.error(`[Scheduler] Error checking schedule for ${sub.name}: ${(e as Error).message}`);
           }
         }
       }

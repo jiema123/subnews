@@ -8,7 +8,8 @@ export interface Subscription {
   userId: string;
   name: string;
   url: string;
-  cron: string;
+  scheduleType: 'daily' | 'once';
+  scheduleTime: string; // "HH:mm" for daily, "YYYY-MM-DDTHH:mm" for once
   webhook: string;
   platform: 'dingtalk' | 'wechat' | 'feishu' | 'telegram';
   template: string;

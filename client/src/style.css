@@ -273,16 +273,112 @@ button.secondary {
 }
 
 @media (max-width: 768px) {
+  #app {
+    padding: 1rem;
+  }
+
+  .title {
+    font-size: 1.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .nav-actions {
+    width: 100%;
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+
+  .nav-actions button {
+    margin-right: 0 !important;
+    /* Override inline style */
+    flex: 1;
+    white-space: nowrap;
+    padding: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    /* Override inline style */
+    gap: 1rem;
+  }
+
+  .dashboard-header button {
+    width: 100% !important;
+    /* Override inline style */
+  }
+
+  .glass-card {
+    padding: 1.5rem;
+  }
+
+  .task-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .task-card {
+    min-width: 0;
+  }
+
+  .modal-content {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
+
   .modal-body {
     flex-direction: column;
+    gap: 1rem;
+    padding: 0 1rem;
   }
 
   .modal-preview {
     border-left: none;
     border-top: 1px solid var(--glass-border);
     padding-left: 0;
-    padding-top: 2rem;
-    margin-top: 1rem;
+    padding-top: 1.5rem;
+    margin-top: 0;
+    flex: none;
+    /* Allow it to take natural height */
+    height: auto;
+    max-height: 40vh;
+    /* Limit height on mobile */
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .modal-footer>div {
+    width: 100%;
+  }
+
+  .modal-footer-right {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .modal-footer button {
+    width: 100%;
+    margin: 0;
+  }
+
+  #btn-delete-task {
+    width: 100% !important;
   }
 }
 

@@ -51,6 +51,18 @@ app.post('/api/auth/login', async (c) => {
   return c.json({ token: email })
 })
 
+// --- Global Cache for Scheduler ---
+let schedulerKeysCache: {
+  version: string | null;
+  keys: { name: string }[];
+} | null = null;
+
+async function updateSubsVersion(kv: KVNamespace) {
+  const version = Date.now().toString();
+  console.log(`[System] Updating subs version to ${version}`);
+  await kv.put('sys:subs_version', version);
+}
+
 // --- Subscription Routes ---
 app.get('/api/subs', auth, async (c) => {
   const email = c.req.header('Authorization')
@@ -68,6 +80,7 @@ app.post('/api/subs', auth, async (c) => {
   const id = crypto.randomUUID()
   const newSub: Subscription = { ...data, id, userId: email, isActive: true }
   await c.env.SUBNEWS_KV.put(`sub:${email}:${id}`, JSON.stringify(newSub))
+  await updateSubsVersion(c.env.SUBNEWS_KV);
   return c.json(newSub)
 })
 
@@ -76,6 +89,7 @@ app.put('/api/subs/:id', auth, async (c) => {
   const id = c.req.param('id')
   const data = await c.req.json()
   await c.env.SUBNEWS_KV.put(`sub:${email}:${id}`, JSON.stringify({ ...data, id, userId: email }))
+  await updateSubsVersion(c.env.SUBNEWS_KV);
   return c.json({ success: true })
 })
 
@@ -83,6 +97,7 @@ app.delete('/api/subs/:id', auth, async (c) => {
   const email = c.req.header('Authorization')
   const id = c.req.param('id')
   await c.env.SUBNEWS_KV.delete(`sub:${email}:${id}`)
+  await updateSubsVersion(c.env.SUBNEWS_KV);
   return c.json({ success: true })
 })
 
@@ -278,7 +293,25 @@ export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Bindings, ctx: ExecutionContext) {
     console.log('[Scheduler] Triggered at', new Date().toISOString());
-    const { keys } = await env.SUBNEWS_KV.list({ prefix: 'sub:' })
+
+    // Check version to see if we need to refresh keys
+    const remoteVersion = await env.SUBNEWS_KV.get('sys:subs_version');
+    let keys: { name: string }[] = [];
+
+    if (!schedulerKeysCache || schedulerKeysCache.version !== remoteVersion) {
+      console.log('[Scheduler] Cache miss or stale. Fetching keys list...');
+      const listRes = await env.SUBNEWS_KV.list({ prefix: 'sub:' });
+      keys = listRes.keys;
+
+      // Update local cache
+      schedulerKeysCache = {
+        version: remoteVersion,
+        keys: keys
+      };
+    } else {
+      console.log('[Scheduler] Using cached keys list.');
+      keys = schedulerKeysCache.keys;
+    }
 
     const now = new Date(); // Current execution time
 

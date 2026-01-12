@@ -77,8 +77,11 @@ function renderRegister() {
 
   document.querySelector('#register-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = (document.querySelector('#email') as HTMLInputElement).value;
-    const password = (document.querySelector('#password') as HTMLInputElement).value;
+    const email = (document.querySelector('#email') as HTMLInputElement).value.trim();
+    const password = (document.querySelector('#password') as HTMLInputElement).value.trim();
+
+    if (!email || !password) return alert('邮箱和密码不能为空');
+
     try {
       await api.auth.register({ email, password });
       alert('注册成功！请登录。');

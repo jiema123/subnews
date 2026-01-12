@@ -2,7 +2,15 @@
 
 SubNews 是一个基于 AI 的新闻聚合与推送 Agent。它允许用户订阅网页内容，利用 LLM (Gemini) 进行智能提取和总结，并通过 Webhook 定时推送到常用的即时通讯工具（钉钉、企业微信、飞书、Telegram）。
 
-![Dashboard Screenshot](https://via.placeholder.com/800x450?text=SubNews+Dashboard)
+🌐 **在线体验**: [https://subnews.21588.org/](https://subnews.21588.org/)
+
+<div align="center">
+  <img src="https://img.justnow.uk/2026/01/1257bef2d7f6860421207cd93acb60d2.png" width="45%" alt="Login Screen" />
+  <img src="https://img.justnow.uk/2026/01/18e3714e43788bf7d3ec032f90205744.png" width="45%" alt="Dashboard" />
+  <br/>
+  <img src="https://img.justnow.uk/2026/01/45d5c0b425c59243bb152cd89514d047.png" width="45%" alt="Task Editing" />
+  <img src="https://img.justnow.uk/2026/01/45cce08b1a4559d8cdac1b70f8ce84ba.png" width="45%" alt="Push Notification" />
+</div>
 
 ## ✨主要特性
 
